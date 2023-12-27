@@ -11,8 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [x86_64-pc-windows-gnu]
-        name: ${{ github.event.repository.name }}_${{ github.ref_name }}_win_x86_64
+        include:
+          - target: x86_64-pc-windows-gnu
+            archive: zip
+            name: ${{ github.event.repository.name }}_${{ github.ref_name }}_win_x86_64
     steps:
       - uses: actions/checkout@master
       - name: Compile and release

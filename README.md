@@ -3,6 +3,8 @@
 *Lenovo UEFI Boot Logo Changer* is a rust program designed to modify the Boot startup logo on Lenovo devices with UEFI firmware.
 This tool allows u to customize the boot logo with different format image.
 
+![ui](https://github.com/chnzzh/lenovo-logo-changer/assets/41407837/57f02ab0-d0b9-4bd3-92e1-d848ad7afde8)
+
 ## Important
 
 + **This program involves modifications to UEFI variables and the ESP partition. Please ensure to backup important files before usage.**

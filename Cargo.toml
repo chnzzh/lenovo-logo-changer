@@ -1,0 +1,24 @@
+[package]
+name = "lenovo-logo-changer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+efivar = "1.4.0"
+eframe = "0.24.1"
+egui = "0.24.1"
+hex = "0.4.3"
+rfd = "0.12.1"
+sha2 = "0.10.8"
+
+
+[dependencies.windows-sys]
+version = "0.52"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_Storage_FileSystem",
+]

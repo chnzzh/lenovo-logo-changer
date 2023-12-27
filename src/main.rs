@@ -123,7 +123,7 @@ impl MyApp {
                         ui.colored_label(Color32::GREEN, "Change Logo Succeed / 设置Logo成功");
                     },
                     -1 => {
-                        ui.colored_label(Color32::RED, "Change Logo Failed / 设置Logo失败！");
+                        ui.colored_label(Color32::RED, "Change Logo Failed / 设置Logo失败");
                     },
                     _ => {}
                 }

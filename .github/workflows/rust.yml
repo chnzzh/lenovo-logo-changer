@@ -19,7 +19,7 @@ jobs:
       - name: Install target
         run: rustup target add x86_64-pc-windows-gnu
       - name: Install mingw-w64
-        run: apt install mingw-w64 -y
+        run: sudo apt install mingw-w64 -y
       - name: Build
         run: cargo build --verbose --target x86_64-pc-windows-gnu
       - name: Run tests

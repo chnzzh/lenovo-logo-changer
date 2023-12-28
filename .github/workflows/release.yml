@@ -26,3 +26,4 @@ jobs:
           EXTRA_FILES: "README.md LICENSE"
           ARCHIVE_TYPES: ${{ matrix.archive_type }}
           ARCHIVE_NAME: ${{ matrix.archive_name }}
+

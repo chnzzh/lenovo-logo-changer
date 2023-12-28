@@ -22,3 +22,7 @@ features = [
     "Win32_System_Threading",
     "Win32_Storage_FileSystem",
 ]
+
+[profile.release]
+strip = true
+lto = true

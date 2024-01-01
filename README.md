@@ -8,6 +8,7 @@ This tool allows u to customize the boot logo with different format image.
 ## Important
 
 + **This program involves modifications to UEFI variables and the ESP partition. Please ensure to backup important files before usage.**
++ **This program will not check if the image files you are using comply with the correct image format. Please ensure that your images can function properly.** (Otherwise your system may be compromised: [LogoFAIL](https://binarly.io/posts/finding_logofail_the_dangers_of_image_parsing_during_system_boot/))
 + This program is intended for personal research use only.
 + **All risks are assumed by the user**.
 

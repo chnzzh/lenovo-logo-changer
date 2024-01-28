@@ -3,7 +3,7 @@ use std::io;
 use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
-use efivar::efi::{VariableFlags, VariableName};
+use efivar::efi::{Variable, VariableFlags};
 use sha2::{Sha256, Digest};
 
 use crate::esp_partition::{copy_file_to_esp, delete_logo_path};
@@ -35,21 +35,20 @@ impl Default for PlatformInfo {
 impl PlatformInfo {
     pub(crate) fn get_info(&mut self) -> bool {
         let varman = efivar::system();
-        let mut esp_buffer = [0u8; 10];
 
-        let esp_var = VariableName::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
-        match varman.read(&esp_var, &mut esp_buffer) {
-            Ok(esp_var) => {
+        let esp_var = Variable::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
+
+        match varman.read(&esp_var) {
+            Ok((esp_buffer, _attr)) => {
+                if esp_buffer.len() != 10 {
+                    eprintln!("read lbldesp_var failed: buffer length is not 10");
+                    return false;
+                }
                 self.enable = esp_buffer[0];
                 self.width = u32::from_le_bytes(esp_buffer[1..5].try_into().unwrap());
                 self.height = u32::from_le_bytes(esp_buffer[5..9].try_into().unwrap());
                 self.support = Self::support_format(esp_buffer[9]);
-                self.lbldesp_var = esp_buffer;
-                println!("esp_var: {:?}", esp_var);
-                println!("esp_buffer: {:?}", esp_buffer);
-                println!("enable: {}", self.enable);
-                println!("width: {}", self.width);
-                println!("height: {}", self.height);
+                self.lbldesp_var = <[u8; 10]>::try_from(esp_buffer).unwrap();
             },
             Err(err) => {
                 eprintln!("read lbldesp_var failed: {}", err);
@@ -57,15 +56,15 @@ impl PlatformInfo {
             }
         }
 
-        let mut dvc_buffer = [0u8; 40];
-        let dvc_var = VariableName::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
-        match varman.read(&dvc_var, &mut dvc_buffer) {
-            Ok(dvc_var) => {
+        let dvc_var = Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
+        match varman.read(&dvc_var) {
+            Ok((dvc_buffer, _attr)) => {
+                if dvc_buffer.len() != 40 {
+                    eprintln!("read lbldvc_var failed: buffer length is not 40");
+                    return false;
+                }
                 self.version = u32::from_le_bytes(dvc_buffer[0..4].try_into().unwrap());
-                self.lbldvc_var = dvc_buffer;
-                println!("dvc_var: {:?}", dvc_var);
-                println!("dvc_buffer: {:?}", dvc_buffer);
-                println!("version: {}", self.version);
+                self.lbldvc_var = <[u8; 40]>::try_from(dvc_buffer).unwrap();
             },
             Err(err) => {
                 eprintln!("read lbldvc_var failed: {}", err);
@@ -94,7 +93,7 @@ impl PlatformInfo {
         // 修改logoinfo
         let mut esp_buffer = self.lbldesp_var.clone();
         esp_buffer[0] = 1;
-        let esp_var = VariableName::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
+        let esp_var = Variable::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
         match varman.write(&esp_var,VariableFlags::from_bits(0x7).unwrap(), &esp_buffer) {
             Ok(rt) => {
                 self.enable = 1;
@@ -126,7 +125,7 @@ impl PlatformInfo {
         println!("sha256_bytes: {:?}", sha256_bytes);
         println!("dvc_buffer: {:?}", dvc_buffer);
 
-        let dvc_var = VariableName::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
+        let dvc_var = Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
         match varman.write(&dvc_var,VariableFlags::from_bits(0x7).unwrap(), &dvc_buffer) {
             Ok(rt) => {
                 self.lbldvc_var = dvc_buffer;
@@ -153,7 +152,7 @@ impl PlatformInfo {
         let mut esp_buffer = self.lbldesp_var.clone();
         if esp_buffer[0] != 0 {
             esp_buffer[0] = 0;
-            let esp_var = VariableName::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
+            let esp_var = Variable::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
             match varman.write(&esp_var,VariableFlags::from_bits(0x7).unwrap(), &esp_buffer) {
                 Ok(rt) => {
                     self.lbldesp_var = esp_buffer;
@@ -170,7 +169,7 @@ impl PlatformInfo {
         let mut dvc_buffer = self.lbldvc_var.clone();
         if dvc_buffer[4..40] != [0u8; 36] {
             dvc_buffer[4..40].clone_from_slice(&[0u8; 36]);
-            let dvc_var = VariableName::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
+            let dvc_var = Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
             match varman.write(&dvc_var,VariableFlags::from_bits(0x7).unwrap(), &dvc_buffer) {
                 Ok(rt) => {
                     self.lbldvc_var = dvc_buffer;

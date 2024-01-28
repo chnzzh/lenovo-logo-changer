@@ -22,7 +22,3 @@ jobs:
         run: sudo apt install mingw-w64 -y
       - name: Build
         run: cargo build --verbose --target x86_64-pc-windows-gnu
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

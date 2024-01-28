@@ -3,6 +3,7 @@
 mod winfunc;
 mod lenlogo;
 mod esp_partition;
+
 use egui::FontId;
 use egui::RichText;
 use eframe::egui;
@@ -11,15 +12,16 @@ use egui::FontFamily::Proportional;
 use egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use lenlogo::PlatformInfo;
 
-
 fn main() -> Result<(), eframe::Error> {
+    let icon = include_bytes!("../assets/icon.png");
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([600.0, 400.0]),
+            .with_inner_size([600.0, 400.0])
+            .with_min_inner_size([600.0, 400.0])
+            .with_icon(eframe::icon_data::from_png_bytes(icon).unwrap()),
         ..Default::default()
     };
-
     eframe::run_native(
         "Lenovo UEFI Boot Logo Changer",
         options,
@@ -29,6 +31,7 @@ fn main() -> Result<(), eframe::Error> {
 
 #[derive(Default)]
 struct MyApp {
+    language: String,
     is_admin:bool,
     is_support:bool,
     platform_info: PlatformInfo,
@@ -58,7 +61,9 @@ impl MyApp {
         if is_admin {
             is_support = platform_info.get_info();
         }
+        let language = String::from("en");
         Self {
+            language,
             is_admin,
             is_support,
             platform_info,
@@ -68,24 +73,70 @@ impl MyApp {
 
     fn show_main_ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
+
+            ui.horizontal(|ui| {
+                ui.label("Language:");
+                ui.radio_value(&mut self.language, String::from("en"), "English");
+                ui.radio_value(&mut self.language, String::from("zh"), "中文");
+            });
+            ui.separator();
+
             if self.is_support {
 
-                ui.label(RichText::new("Your device is supported ! / 您的设备是支持的！").color(Color32::GREEN));
-                ui.separator();
-                if self.platform_info.enable != 0 {
-                    ui.colored_label(Color32::LIGHT_GREEN, "UEFI Logo DIY Enabled / 自定义UEFI Logo已启用");
+                ui.colored_label(Color32::LIGHT_GREEN, if self.language == "zh" {
+                    "您的设备是支持的！"
                 }
                 else {
-                    ui.colored_label(Color32::LIGHT_RED, "UEFI Logo DIY Disabled / 自定义UEFI Logo未启用");
+                    "Your device is supported!"
+                });
+
+                ui.separator();
+                if self.platform_info.enable != 0 {
+                    ui.colored_label(Color32::LIGHT_GREEN, if self.language == "zh" {
+                        "自定义UEFI Logo已启用"
+                    }
+                    else {
+                        "UEFI Logo DIY Enabled"
+                    });
+                }
+                else {
+                    ui.colored_label(Color32::LIGHT_RED, if self.language == "zh" {
+                        "自定义UEFI Logo未启用"
+                    }
+                    else {
+                        "UEFI Logo DIY Disabled"
+                    });
                 }
 
-                ui.label(format!("Max Image Size / 图片最大分辨率: {}x{}", self.platform_info.width, self.platform_info.height));
-                ui.label(format!("Support Format / 支持的图片格式 : {}", self.platform_info.support.join(" / ")));
-                ui.label(format!("Version : {:x}", self.platform_info.version));
+                ui.label(format!("{}: {}x{}", if self.language == "zh" {
+                        "图片最大分辨率"
+                    }
+                    else {
+                        "Max Image Size"
+                    }, self.platform_info.width, self.platform_info.height));
+                // ui.label(format!("Support Format / 支持的图片格式 : {}", self.platform_info.support.join(" / ")));
+                ui.label(format!("{} : {}", if self.language == "zh" {
+                        "支持的图片格式"
+                    }
+                    else {
+                        "Support Format"
+                    }, self.platform_info.support.join(" / ")));
+                ui.label(format!("{} : {:x}", if self.language == "zh" {
+                        "协议版本"
+                    }
+                    else {
+                        "Version"
+                },self.platform_info.version));
+
                 ui.separator();
 
                 if !self.platform_info.support.is_empty() {
-                    if ui.button("Open Image / 打开图片").clicked() {
+                    if ui.button(if self.language == "zh" {
+                        "选择图片"
+                    }
+                    else {
+                        "Pick Image"
+                    }).clicked() {
                         if let Some(path) = rfd::FileDialog::new()
                             .add_filter("Image", &*self.platform_info.support)
                             .pick_file() {
@@ -97,13 +148,28 @@ impl MyApp {
                 if let Some(picked_path) = &self.picked_path  {
                     if self.platform_info.version == 0x20003 {
                         ui.horizontal(|ui| {
-                            ui.label("Selected Image Path :");
+                            ui.label(if self.language == "zh" {
+                                "已选择的图片："
+                            }
+                            else {
+                                "Picked Image: "
+                            });
                             ui.monospace(picked_path);
                         });
-                        ui.colored_label(Color32::LIGHT_RED, "Please confirm the Size and format of the uploaded images");
-                        ui.colored_label(Color32::LIGHT_RED, "请最后确认分辨率和上传的图片格式");
-
-                        if ui.button(RichText::new("!!! Change Logo / 设置Logo !!!").color(Color32::RED)).clicked() {
+                        /*
+                        ui.colored_label(Color32::LIGHT_RED, if self.language == "zh" {
+                            "请最后确认分辨率和上传的图片格式！"
+                        }
+                        else {
+                            "Please confirm the SIZE and FORMAT of the uploaded images!"
+                        });
+                        */
+                        if ui.button(RichText::new(if self.language == "zh" {
+                            "!!! 设置Logo !!! "
+                        }
+                        else {
+                            "!!! Change Logo !!!"
+                        }).color(Color32::RED)).clicked() {
                             self.last_restore_logo = 0;
                             self.last_set_logo = 0;
                             if self.platform_info.set_logo(picked_path) {
@@ -120,16 +186,31 @@ impl MyApp {
 
                 match self.last_set_logo {
                     1 => {
-                        ui.colored_label(Color32::GREEN, "Change Logo Succeed / 设置Logo成功");
+                        ui.colored_label(Color32::LIGHT_GREEN, if self.language == "zh" {
+                            "设置Logo成功，重新启动以查看效果"
+                        }
+                        else {
+                            "Change logo succeed, reboot to see the effect"
+                        });
                     },
                     -1 => {
-                        ui.colored_label(Color32::RED, "Change Logo Failed / 设置Logo失败");
+                        ui.colored_label(Color32::LIGHT_RED, if self.language == "zh" {
+                            "设置Logo失败"
+                        }
+                        else {
+                            "Change logo failed"
+                        });
                     },
                     _ => {}
                 }
 
                 ui.separator();
-                if ui.button("Restore Logo / 恢复Logo").clicked() {
+                if ui.button(if self.language == "zh" {
+                    "恢复Logo"
+                }
+                else {
+                    "Restore Logo"
+                }).clicked() {
                     self.last_restore_logo = 0;
                     self.last_set_logo = 0;
 
@@ -145,10 +226,20 @@ impl MyApp {
                 }
                 match self.last_restore_logo {
                     1 => {
-                        ui.colored_label(Color32::GREEN, "Restore Logo Succeed / 恢复Logo成功");
+                        ui.colored_label(Color32::LIGHT_GREEN, if self.language == "zh" {
+                            "恢复Logo成功"
+                        }
+                        else {
+                            "Restore Logo Success"
+                        });
                     },
                     -1 => {
-                        ui.colored_label(Color32::RED, "Restore Logo Failed / 恢复Logo失败");
+                        ui.colored_label(Color32::LIGHT_RED, if self.language == "zh" {
+                            "恢复Logo失败"
+                        }
+                        else {
+                            "Restore Logo Failed"
+                        });
                     },
                     _ => {}
                 }
@@ -156,31 +247,35 @@ impl MyApp {
                 ui.separator();
             }
             else {
-                ui.label("Your device is not supported !");
-                ui.label("不支持您的设备！");
+                    ui.label(if self.language == "zh" {
+                        "不支持您的设备！"
+                    }
+                    else {
+                        "Your device is not supported!"
+                    });
             }
-
-
         });
     }
     fn show_admin_prompt_ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("You need to run this program as Administrator !");
-            ui.label("需要以管理员权限运行程序！");
+            ui.add_space(10.0);
+            ui.label("您需要以管理员权限运行此程序！");
         });
     }
+
 }
 
 fn setup_custom_fonts(ctx: &egui::Context) {
     // Start with the default fonts (we will be adding to them rather than replacing them).
     let mut fonts = egui::FontDefinitions::default();
 
-    // Install my own font (maybe supporting non-latin characters).
+    // Install my own assets (maybe supporting non-latin characters).
     // .ttf and .otf files supported.
     fonts.font_data.insert(
         "my_font".to_owned(),
         egui::FontData::from_static(include_bytes!(
-            "./font/HarmonyOS_Sans_SC_Regular.ttf"
+            "../assets/HarmonyOS_Sans_SC_Regular.ttf"
         )),
     );
 

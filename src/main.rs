@@ -75,7 +75,7 @@ impl MyApp {
         egui::CentralPanel::default().show(ctx, |ui| {
 
             ui.horizontal(|ui| {
-                ui.label("Language:");
+                ui.label("Language : ");
                 ui.radio_value(&mut self.language, String::from("en"), "English");
                 ui.radio_value(&mut self.language, String::from("zh"), "中文");
             });
@@ -87,7 +87,7 @@ impl MyApp {
                     "您的设备是支持的！"
                 }
                 else {
-                    "Your device is supported!"
+                    "Your device is supported !"
                 });
 
                 ui.separator();
@@ -108,7 +108,7 @@ impl MyApp {
                     });
                 }
 
-                ui.label(format!("{}: {}x{}", if self.language == "zh" {
+                ui.label(format!("{} : {}x{}", if self.language == "zh" {
                         "图片最大分辨率"
                     }
                     else {
@@ -251,7 +251,7 @@ impl MyApp {
                         "不支持您的设备！"
                     }
                     else {
-                        "Your device is not supported!"
+                        "Your device is not supported !"
                     });
             }
         });
@@ -272,11 +272,10 @@ fn setup_custom_fonts(ctx: &egui::Context) {
 
     // Install my own assets (maybe supporting non-latin characters).
     // .ttf and .otf files supported.
+    let font = std::fs::read("c:/Windows/Fonts/msyh.ttc").unwrap();
     fonts.font_data.insert(
         "my_font".to_owned(),
-        egui::FontData::from_static(include_bytes!(
-            "../assets/HarmonyOS_Sans_SC_Regular.ttf"
-        )),
+        egui::FontData::from_owned(font)
     );
 
     fonts.families.get_mut(&Proportional).unwrap()

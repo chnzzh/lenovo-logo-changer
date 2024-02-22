@@ -41,3 +41,4 @@ All of the above operations need to be performed with administrator privileges.
 ## Support Types
 
 + ThinkBook 14 G4+ ARA
++ ThinkBook 16 G5+ ARP

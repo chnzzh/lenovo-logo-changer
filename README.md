@@ -44,4 +44,5 @@ All of the above operations need to be performed with administrator privileges.
 + ThinkBook 16 G5+ ARP
 + IdeaPad Slim 5 14AHP9 (83DB)
 + Lenovo LOQ 15IRH8
++ Lenovo Yoga Slim 7 Aura Edition 15,3"
 + ...

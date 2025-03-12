@@ -8,6 +8,7 @@ use egui::FontId;
 use egui::RichText;
 use eframe::egui;
 use eframe::egui::Color32;
+use eframe::epaint::text::FontData;
 use egui::FontFamily::Proportional;
 use egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use lenlogo::PlatformInfo;
@@ -25,7 +26,7 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Lenovo UEFI Boot Logo Changer",
         options,
-        Box::new(|cc| Box::new(MyApp::new(cc)))
+        Box::new(|cc| Ok(Box::new(MyApp::new(cc))))
     )
 }
 
@@ -34,9 +35,11 @@ struct MyApp {
     language: String,
     is_admin:bool,
     is_support:bool,
+    is_loading_icon: bool,
     platform_info: PlatformInfo,
     last_set_logo:i8,
     last_restore_logo:i8,
+    set_loading_icon: bool,
     picked_path: Option<String>,
 }
 
@@ -62,10 +65,21 @@ impl MyApp {
             is_support = platform_info.get_info();
         }
         let language = String::from("en");
+        let is_loading_icon = platform_info.get_loading_icon();
+        let set_loading_icon = is_loading_icon;
+
+        fn xor_encrypt_decrypt(input: &str, key: char) -> String {
+            input.chars()
+                .map(|c| (c as u8 ^ key as u8) as char) // 对每个字符用密钥进行异或
+                .collect()
+        }
+        
         Self {
             language,
             is_admin,
             is_support,
+            is_loading_icon,
+            set_loading_icon,
             platform_info,
             ..Default::default()
         }
@@ -73,7 +87,6 @@ impl MyApp {
 
     fn show_main_ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-
             ui.horizontal(|ui| {
                 ui.label("Language : ");
                 ui.radio_value(&mut self.language, String::from("en"), "English");
@@ -109,28 +122,34 @@ impl MyApp {
                 }
 
                 ui.label(format!("{} : {}x{}", if self.language == "zh" {
-                        "图片最大分辨率"
-                    }
-                    else {
-                        "Max Image Size"
-                    }, self.platform_info.width, self.platform_info.height));
+                    "图片最大分辨率"
+                }
+                else {
+                    "Max Image Size"
+                }, self.platform_info.width, self.platform_info.height));
                 // ui.label(format!("Support Format / 支持的图片格式 : {}", self.platform_info.support.join(" / ")));
                 ui.label(format!("{} : {}", if self.language == "zh" {
-                        "支持的图片格式"
-                    }
-                    else {
-                        "Support Format"
-                    }, self.platform_info.support.join(" / ")));
+                    "支持的图片格式"
+                }
+                else {
+                    "Support Format"
+                }, self.platform_info.support.join(" / ")));
                 ui.label(format!("{} : {:x}", if self.language == "zh" {
-                        "协议版本"
-                    }
-                    else {
-                        "Version"
+                    "协议版本"
+                }
+                else {
+                    "Version"
                 },self.platform_info.version));
 
                 ui.separator();
 
                 if !self.platform_info.support.is_empty() {
+                    ui.checkbox(&mut self.set_loading_icon, if self.language == "zh" {
+                        "显示Windows加载图标"
+                    }
+                    else {
+                        "show Windows loading circle"
+                    });
                     if ui.button(if self.language == "zh" {
                         "选择图片"
                     }
@@ -172,6 +191,17 @@ impl MyApp {
                         }).color(Color32::RED)).clicked() {
                             self.last_restore_logo = 0;
                             self.last_set_logo = 0;
+
+                            self.platform_info.set_loading_icon(self.set_loading_icon);
+                            self.is_loading_icon = self.platform_info.get_loading_icon();
+                            if self.is_loading_icon == self.set_loading_icon {
+                                println!("Loading icon Change Success!");
+                            }
+                            else {
+                                eprintln!("Loading icon Change Fail!");
+                            }
+                            self.set_loading_icon = self.is_loading_icon;
+
                             if self.platform_info.set_logo(picked_path) {
                                 self.last_set_logo = 1;
                                 println!("Change Logo Success !")
@@ -214,6 +244,16 @@ impl MyApp {
                     self.last_restore_logo = 0;
                     self.last_set_logo = 0;
 
+                    self.platform_info.set_loading_icon(true);
+                    self.is_loading_icon = self.platform_info.get_loading_icon();
+                    if self.is_loading_icon {
+                        print!("Restore Loading icon Success!");
+                    }
+                    else {
+                        eprintln!("Restore Loading icon Failed !")
+                    }
+                    self.set_loading_icon = self.is_loading_icon;
+
                     if self.platform_info.restore_logo() {
                         self.last_restore_logo = 1;
                         println!("Restore Logo Success!")
@@ -245,14 +285,21 @@ impl MyApp {
                 }
 
                 ui.separator();
+                
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+                    use egui::special_emojis::GITHUB;
+                    ui.label(
+                        format!("{GITHUB} | MIT License"),
+                    ).on_hover_text("https://github.com/chnzzh/lenovo-logo-changer");
+                });
             }
             else {
-                    ui.label(if self.language == "zh" {
-                        "不支持您的设备！"
-                    }
-                    else {
-                        "Your device is not supported !"
-                    });
+                ui.label(if self.language == "zh" {
+                    "不支持您的设备！"
+                }
+                else {
+                    "Your device is not supported !"
+                });
             }
         });
     }
@@ -272,10 +319,11 @@ fn setup_custom_fonts(ctx: &egui::Context) {
 
     // Install my own assets (maybe supporting non-latin characters).
     // .ttf and .otf files supported.
-    let font = std::fs::read("c:/Windows/Fonts/msyh.ttc").unwrap();
+    let font = std::fs::read("C:/Windows/Fonts/msyh.ttc").unwrap();
+
     fonts.font_data.insert(
         "my_font".to_owned(),
-        egui::FontData::from_owned(font)
+        std::sync::Arc::new(FontData::from_owned(font)),
     );
 
     fonts.families.get_mut(&Proportional).unwrap()
@@ -294,5 +342,6 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         (Button, FontId::new(18.0, Proportional)),
         (Small, FontId::new(10.0, Proportional)),
     ].into();
+    //style.spacing.item_spacing = egui::vec2(10.0, 10.0);
     ctx.set_style(style);
 }

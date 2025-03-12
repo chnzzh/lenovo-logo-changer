@@ -1,4 +1,3 @@
-
 use std::path::Path;
 use windows_sys::Win32::Storage::FileSystem::GetLogicalDrives;
 

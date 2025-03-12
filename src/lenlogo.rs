@@ -3,6 +3,7 @@ use std::io;
 use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
+use std::process::Command;
 use efivar::efi::{Variable, VariableFlags};
 use sha2::{Sha256, Digest};
 
@@ -181,9 +182,68 @@ impl PlatformInfo {
                 }
             }
         }
-
-        return status;
+        status
     }
+
+    pub(crate) fn get_loading_icon(&mut self) -> bool {
+        // 执行 bcdedit /enum all 命令
+        let output = Command::new("cmd")
+            .args(&["/C", "bcdedit", "/enum", "all"])
+            .output();
+
+        match output {
+            Ok(output) => {
+                // 将输出转换为字符串
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                // 检查输出中是否包含 "bootuxdisabled" 和 "Yes"
+                for line in stdout.lines() {
+                    if line.contains("bootuxdisabled") && line.contains("Yes") {
+                        println!("Loading icon Disabled");
+                        return false; // 存在且包含 "Yes"
+                    }
+                }
+                println!("Loading icon Enabled");
+                true // 不存在或不包含 "Yes"
+            }
+            Err(e) => {
+                eprintln!("Failed to execute command: {}", e);
+                true // 处理错误，返回 false
+            }
+        }
+    }
+
+    pub(crate) fn set_loading_icon(&mut self, show_loading_icon: bool) -> bool {
+        let command = if show_loading_icon {
+            "bcdedit.exe -set bootuxdisabled off"
+        } else {
+            "bcdedit.exe -set bootuxdisabled on"
+        };
+
+        // 使用 Command 来执行外部命令
+        match Command::new("cmd")
+            .args(&["/C", command])
+            .output() {
+            Ok(output) => {
+                // 检查命令是否成功执行
+                if output.status.success() {
+                    println!("Command executed successfully");
+                    true
+                } else {
+                    // 输出失败信息
+                    eprintln!(
+                        "Command failed: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                    false
+                }
+            },
+            Err(e) => {
+                eprintln!("Failed to execute command: {}", e);
+                false
+            }
+        }
+    }
+
     fn support_format(support: u8) -> Vec<&'static str> {
         let mut support_types = Vec::new();
         if support & 0x1 == 0x1 {

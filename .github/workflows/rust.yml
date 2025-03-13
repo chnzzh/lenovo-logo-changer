@@ -17,8 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install target
-        run: rustup target add x86_64-pc-windows-gnu
+        run: rustup target add x86_64-pc-windows-gnu --toolchain nightly
       - name: Install mingw-w64
         run: sudo apt install mingw-w64 -y
       - name: Build
-        run: cargo build --verbose --target x86_64-pc-windows-gnu
+        run: cargo +nightly build --verbose --target x86_64-pc-windows-gnu

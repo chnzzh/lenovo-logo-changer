@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+#![feature(windows_process_extensions_show_window)]
 
 mod winfunc;
 mod lenlogo;
@@ -18,8 +19,8 @@ fn main() -> Result<(), eframe::Error> {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([600.0, 400.0])
-            .with_min_inner_size([600.0, 400.0])
+            .with_inner_size([600.0, 420.0])
+            .with_min_inner_size([600.0, 420.0])
             .with_icon(eframe::icon_data::from_png_bytes(icon).unwrap()),
         ..Default::default()
     };
@@ -67,12 +68,6 @@ impl MyApp {
         let language = String::from("en");
         let is_loading_icon = platform_info.get_loading_icon();
         let set_loading_icon = is_loading_icon;
-
-        fn xor_encrypt_decrypt(input: &str, key: char) -> String {
-            input.chars()
-                .map(|c| (c as u8 ^ key as u8) as char) // 对每个字符用密钥进行异或
-                .collect()
-        }
         
         Self {
             language,
@@ -191,7 +186,6 @@ impl MyApp {
                         }).color(Color32::RED)).clicked() {
                             self.last_restore_logo = 0;
                             self.last_set_logo = 0;
-
                             self.platform_info.set_loading_icon(self.set_loading_icon);
                             self.is_loading_icon = self.platform_info.get_loading_icon();
                             if self.is_loading_icon == self.set_loading_icon {
@@ -285,12 +279,13 @@ impl MyApp {
                 }
 
                 ui.separator();
-                
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+
+                ui.allocate_space(egui::vec2(0.0, (ui.available_height() - 18.0).max(0.0)));
+                ui.vertical_centered(|ui| {
                     use egui::special_emojis::GITHUB;
-                    ui.label(
-                        format!("{GITHUB} | MIT License"),
-                    ).on_hover_text("https://github.com/chnzzh/lenovo-logo-changer");
+                    ui.label(RichText::new(
+                        format!("{GITHUB} @chnzzh | MIT License")
+                    ).text_style(egui::TextStyle::Small)) //.on_hover_text("https://github.com/chnzzh/lenovo-logo-changer");
                 });
             }
             else {
@@ -300,9 +295,9 @@ impl MyApp {
                 else {
                     "Your device is not supported !"
                 });
-            }
-        });
-    }
+            }});
+        }
+
     fn show_admin_prompt_ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("You need to run this program as Administrator !");
@@ -340,8 +335,7 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         (Body, FontId::new(18.0, Proportional)),
         (Monospace, FontId::new(18.0, Proportional)),
         (Button, FontId::new(18.0, Proportional)),
-        (Small, FontId::new(10.0, Proportional)),
+        (Small, FontId::new(15.0, Proportional)),
     ].into();
-    //style.spacing.item_spacing = egui::vec2(10.0, 10.0);
     ctx.set_style(style);
 }

@@ -1,3 +1,4 @@
+use std::os::windows::process::CommandExt;
 use std::path::Path;
 use windows_sys::Win32::Storage::FileSystem::GetLogicalDrives;
 
@@ -101,6 +102,7 @@ fn mountvol_mount(drive_letter: char) -> bool {
     mountvol_cmd
         .arg(format!("{}:", drive_letter))
         .arg("/s")
+        .show_window(0u16)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
     if !mountvol_cmd.status().unwrap().success() {
@@ -116,6 +118,7 @@ fn mountvol_unmount(drive_letter: char) -> bool {
     mountvol_cmd
         .arg(format!("{}:", drive_letter))
         .arg("/d")
+        .show_window(0u16)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
     if !mountvol_cmd.status().unwrap().success() {

@@ -4,6 +4,7 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 use std::process::Command;
+use std::os::windows::process::CommandExt;
 use efivar::efi::{Variable, VariableFlags};
 use sha2::{Sha256, Digest};
 
@@ -184,13 +185,15 @@ impl PlatformInfo {
         }
         status
     }
-
+    
     pub(crate) fn get_loading_icon(&mut self) -> bool {
         // 执行 bcdedit /enum all 命令
-        let output = Command::new("cmd")
-            .args(&["/C", "bcdedit", "/enum", "all"])
+       // #![feature(windows_process_extensions_show_window)]
+        let output = Command::new("bcdedit")
+            .arg("/enum")
+            .arg("all")
+            .show_window(0u16)
             .output();
-
         match output {
             Ok(output) => {
                 // 将输出转换为字符串
@@ -214,14 +217,15 @@ impl PlatformInfo {
 
     pub(crate) fn set_loading_icon(&mut self, show_loading_icon: bool) -> bool {
         let command = if show_loading_icon {
-            "bcdedit.exe -set bootuxdisabled off"
+            vec!["-set", "bootuxdisabled", "off"]
         } else {
-            "bcdedit.exe -set bootuxdisabled on"
+            vec!["-set", "bootuxdisabled", "on"]
         };
 
         // 使用 Command 来执行外部命令
-        match Command::new("cmd")
-            .args(&["/C", command])
+        match Command::new("bcdedit.exe")
+            .args(&command)
+            .show_window(0u16)
             .output() {
             Ok(output) => {
                 // 检查命令是否成功执行

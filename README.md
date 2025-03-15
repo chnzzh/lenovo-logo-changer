@@ -10,6 +10,10 @@ This tool allows u to customize the boot logo with different format image.
 
 ![20240128171115](https://github.com/chnzzh/lenovo-logo-changer/assets/41407837/674d7db6-e2af-4360-956d-edacf9fe5157)
 
+**[Download](https://github.com/chnzzh/lenovo-logo-changer/releases/latest) the latest executable file compiled by GitHub Actions**
+
+You can also refer to [How to build](#how-to-build) to compile it yourself.
+
 ## Important
 
 + **This program involves modifications to UEFI variables and the ESP partition. Please ensure to backup important files before usage.**
@@ -23,7 +27,7 @@ This tool allows u to customize the boot logo with different format image.
 + Click "Open Image" to upload a suitable image.
 + Click "Change Logo"
 
-![ui](https://github.com/chnzzh/lenovo-logo-changer/assets/41407837/0dec7897-38ed-470c-afe6-825c6a56fcd1)
+![ui](https://github.com/user-attachments/assets/b1d5112e-3bcb-44c2-8c9b-d43669285cfd)
 
 ## How it Works
 
@@ -37,6 +41,24 @@ So this tool do:
 3. **Modify UEFI Variables** to enable the UEFI program to correctly set and display the customized logo.
 
 All of the above operations need to be performed with administrator privileges.
+
+## How to build
+
+1. Install Rust and MinGW:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   sudo apt install mingw-w64 -y
+   ```
+
+2. Add the Windows target for Rust:
+   ```bash
+   rustup target add x86_64-pc-windows-gnu --toolchain nightly
+   ```
+
+3. Build the project:
+   ```bash
+   cargo +nightly build --verbose --target x86_64-pc-windows-gnu --release
+   ```
 
 ## Support Types
 

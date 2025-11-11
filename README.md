@@ -23,11 +23,24 @@ You can also refer to [How to build](#how-to-build) to compile it yourself.
 
 ## Usage
 
+![ui](https://github.com/user-attachments/assets/b1d5112e-3bcb-44c2-8c9b-d43669285cfd)
+
+### Windows
+
 + Right-click on the executable file and run it in administrator mode.
 + Click "Open Image" to upload a suitable image.
 + Click "Change Logo"
 
-![ui](https://github.com/user-attachments/assets/b1d5112e-3bcb-44c2-8c9b-d43669285cfd)
+
+
+### Linux
+
++ Run the program with root privileges:
+  ```bash
+  sudo ./lenovo-logo-changer
+  ```
++ Click "Open Image" to upload a suitable image.
++ Click "Change Logo"
 
 ## How it Works
 
@@ -44,6 +57,8 @@ All of the above operations need to be performed with administrator privileges.
 
 ## How to build
 
+### On Linux
+
 1. Install Rust and MinGW:
    ```bash
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -52,12 +67,15 @@ All of the above operations need to be performed with administrator privileges.
 
 2. Add the Windows target for Rust:
    ```bash
-   rustup target add x86_64-pc-windows-gnu --toolchain nightly
+   rustup target add x86_64-pc-windows-gnu
    ```
 
 3. Build the project:
    ```bash
-   cargo +nightly build --verbose --target x86_64-pc-windows-gnu --release
+   # Windows target
+   cargo build --release --target x86_64-pc-windows-gnu
+   # Linux target
+   cargo build --release
    ```
 
 ## Support Types

@@ -3,12 +3,33 @@ use std::io;
 use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
-use std::process::Command;
-use std::os::windows::process::CommandExt;
 use efivar::efi::{Variable, VariableFlags};
 use sha2::{Sha256, Digest};
+use log::{debug, error, info};
 
 use crate::esp_partition::{copy_file_to_esp, delete_logo_path};
+
+#[cfg(target_os = "linux")]
+use crate::platform::linux::LinuxPlatform;
+
+/// 跨平台的EFI变量写入包装函数
+/// Linux下需要处理immutable属性，Windows下直接调用
+fn with_efi_var_writable<F>(var_name: &str, f: F) -> Result<(), String>
+where
+    F: FnOnce() -> Result<(), String>,
+{
+    #[cfg(target_os = "linux")]
+    {
+        LinuxPlatform::with_efi_var_writable(var_name, f)
+    }
+    
+    #[cfg(not(target_os = "linux"))]
+    {
+        // Windows和其他平台直接执行
+        let _ = var_name; // 消除未使用变量警告
+        f()
+    }
+}
 
 pub(crate) struct PlatformInfo {
     pub(crate) enable: u8,
@@ -43,7 +64,7 @@ impl PlatformInfo {
         match varman.read(&esp_var) {
             Ok((esp_buffer, _attr)) => {
                 if esp_buffer.len() != 10 {
-                    eprintln!("read lbldesp_var failed: buffer length is not 10");
+                    error!("read lbldesp_var failed: buffer length is not 10");
                     return false;
                 }
                 self.enable = esp_buffer[0];
@@ -53,7 +74,7 @@ impl PlatformInfo {
                 self.lbldesp_var = <[u8; 10]>::try_from(esp_buffer).unwrap();
             },
             Err(err) => {
-                eprintln!("read lbldesp_var failed: {}", err);
+                error!("read lbldesp_var failed: {}", err);
                 return false;
             }
         }
@@ -62,14 +83,14 @@ impl PlatformInfo {
         match varman.read(&dvc_var) {
             Ok((dvc_buffer, _attr)) => {
                 if dvc_buffer.len() != 40 {
-                    eprintln!("read lbldvc_var failed: buffer length is not 40");
+                    error!("read lbldvc_var failed: buffer length is not 40");
                     return false;
                 }
                 self.version = u32::from_le_bytes(dvc_buffer[0..4].try_into().unwrap());
                 self.lbldvc_var = <[u8; 40]>::try_from(dvc_buffer).unwrap();
             },
             Err(err) => {
-                eprintln!("read lbldvc_var failed: {}", err);
+                error!("read lbldvc_var failed: {}", err);
                 return false;
             }
         }
@@ -81,29 +102,43 @@ impl PlatformInfo {
         // 复制文件到ESP分区
         let file_path = Path::new(img_path);
         let file_extension = file_path.extension().unwrap().to_str().unwrap();
-        println!("file_extension: {}", file_extension);
+    debug!("file_extension: {}", file_extension);
 
         let dst_path = format!(r"/EFI/Lenovo/Logo/mylogo_{}x{}.{}", self.width, self.height, file_extension);
-        println!("dst_path: {}", dst_path);
+    info!("target path: {}", dst_path);
 
         if copy_file_to_esp(img_path, &dst_path) == false {
-            eprintln!("copy file failed");
+            error!("copy file failed");
             return false;
         }
 
         let mut varman = efivar::system();
+        
         // 修改logoinfo
         let mut esp_buffer = self.lbldesp_var.clone();
         esp_buffer[0] = 1;
         let esp_var = Variable::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
-        match varman.write(&esp_var,VariableFlags::from_bits(0x7).unwrap(), &esp_buffer) {
-            Ok(rt) => {
+        
+        // 在Linux下需要先移除immutable属性
+        let write_result = with_efi_var_writable("LBLDESP-871455d0-5576-4fb8-9865-af0824463b9e", || {
+            match varman.write(&esp_var, VariableFlags::from_bits(0x7).unwrap(), &esp_buffer) {
+                Ok(rt) => {
+                    debug!("write lbldesp_var: {:?}", rt);
+                    Ok(())
+                },
+                Err(err) => {
+                    Err(format!("write lbldesp_var failed: {}", err))
+                }
+            }
+        });
+        
+        match write_result {
+            Ok(_) => {
                 self.enable = 1;
                 self.lbldesp_var = esp_buffer;
-                println!("{:?}", rt);
             },
             Err(err) => {
-                eprintln!("write lbldesp_var failed: {}", err);
+                error!("{}", err);
                 return false;
             }
         }
@@ -118,23 +153,36 @@ impl PlatformInfo {
                 sha256_bytes = hex::decode(sha256).unwrap();
             }
             Err(e) => {
-                eprintln!("[!] READ ERROR {}: {}", img_path, e);
+                error!("read error {}: {}", img_path, e);
                 return false;
             },
         }
         let mut dvc_buffer = self.lbldvc_var.clone();
         dvc_buffer[4..36].clone_from_slice(&sha256_bytes);
-        println!("sha256_bytes: {:?}", sha256_bytes);
-        println!("dvc_buffer: {:?}", dvc_buffer);
+    debug!("sha256_bytes: {:?}", sha256_bytes);
+    debug!("dvc_buffer: {:?}", dvc_buffer);
 
         let dvc_var = Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
-        match varman.write(&dvc_var,VariableFlags::from_bits(0x7).unwrap(), &dvc_buffer) {
-            Ok(rt) => {
+        
+        // 在Linux下需要先移除immutable属性
+        let write_result = with_efi_var_writable("LBLDVC-871455d1-5576-4fb8-9865-af0824463c9f", || {
+            match varman.write(&dvc_var, VariableFlags::from_bits(0x7).unwrap(), &dvc_buffer) {
+                Ok(rt) => {
+                    debug!("write lbldvc_var: {:?}", rt);
+                    Ok(())
+                },
+                Err(err) => {
+                    Err(format!("write lbldvc_var failed: {}", err))
+                }
+            }
+        });
+        
+        match write_result {
+            Ok(_) => {
                 self.lbldvc_var = dvc_buffer;
-                println!("{:?}", rt);
             },
             Err(err) => {
-                eprintln!("write lbldvc_var failed: {}", err);
+                error!("{}", err);
                 return false;
             }
         }
@@ -145,7 +193,7 @@ impl PlatformInfo {
         //
         let mut status = true;
         if !delete_logo_path() {
-            eprintln!("delete logo path failed");
+            error!("delete logo path failed");
             status = false;
         }
 
@@ -155,14 +203,27 @@ impl PlatformInfo {
         if esp_buffer[0] != 0 {
             esp_buffer[0] = 0;
             let esp_var = Variable::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
-            match varman.write(&esp_var,VariableFlags::from_bits(0x7).unwrap(), &esp_buffer) {
-                Ok(rt) => {
+            
+            // 在Linux下需要先移除immutable属性
+            let write_result = with_efi_var_writable("LBLDESP-871455d0-5576-4fb8-9865-af0824463b9e", || {
+                match varman.write(&esp_var, VariableFlags::from_bits(0x7).unwrap(), &esp_buffer) {
+                    Ok(rt) => {
+                        debug!("write lbldesp_var: {:?}", rt);
+                        Ok(())
+                    },
+                    Err(err) => {
+                        Err(format!("write lbldesp_var failed: {}", err))
+                    }
+                }
+            });
+            
+            match write_result {
+                Ok(_) => {
                     self.lbldesp_var = esp_buffer;
-                    println!("{:?}", rt);
                 },
                 Err(err) => {
-                    eprintln!("write lbldesp_var failed: {}", err);
-                    status =  false;
+                    error!("{}", err);
+                    status = false;
                 }
             }
         }
@@ -172,81 +233,27 @@ impl PlatformInfo {
         if dvc_buffer[4..40] != [0u8; 36] {
             dvc_buffer[4..40].clone_from_slice(&[0u8; 36]);
             let dvc_var = Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
-            match varman.write(&dvc_var,VariableFlags::from_bits(0x7).unwrap(), &dvc_buffer) {
-                Ok(rt) => {
+            
+            let write_result = with_efi_var_writable("LBLDVC-871455d1-5576-4fb8-9865-af0824463c9f", || {
+                match varman.write(&dvc_var, VariableFlags::from_bits(0x7).unwrap(), &dvc_buffer) {
+                    Ok(rt) => { debug!("write lbldvc_var: {:?}", rt); Ok(()) },
+                    Err(err) => Err(format!("write lbldvc_var failed: {}", err))
+                }
+            });
+            
+            match write_result {
+                Ok(_) => {
                     self.lbldvc_var = dvc_buffer;
-                    println!("{:?}", rt);
                 },
                 Err(err) => {
-                    eprintln!("write lbldvc_var failed: {}", err);
+                    error!("{}", err);
                     status = false;
                 }
             }
         }
         status
     }
-    
-    pub(crate) fn get_loading_icon(&mut self) -> bool {
-        // 执行 bcdedit /enum all 命令
-       // #![feature(windows_process_extensions_show_window)]
-        let output = Command::new("bcdedit")
-            .arg("/enum")
-            .arg("all")
-            .show_window(0u16)
-            .output();
-        match output {
-            Ok(output) => {
-                // 将输出转换为字符串
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                // 检查输出中是否包含 "bootuxdisabled" 和 "Yes"
-                for line in stdout.lines() {
-                    if line.contains("bootuxdisabled") && line.contains("Yes") {
-                        println!("Loading icon Disabled");
-                        return false; // 存在且包含 "Yes"
-                    }
-                }
-                println!("Loading icon Enabled");
-                true // 不存在或不包含 "Yes"
-            }
-            Err(e) => {
-                eprintln!("Failed to execute command: {}", e);
-                true // 处理错误，返回 false
-            }
-        }
-    }
 
-    pub(crate) fn set_loading_icon(&mut self, show_loading_icon: bool) -> bool {
-        let command = if show_loading_icon {
-            vec!["-set", "bootuxdisabled", "off"]
-        } else {
-            vec!["-set", "bootuxdisabled", "on"]
-        };
-
-        // 使用 Command 来执行外部命令
-        match Command::new("bcdedit.exe")
-            .args(&command)
-            .show_window(0u16)
-            .output() {
-            Ok(output) => {
-                // 检查命令是否成功执行
-                if output.status.success() {
-                    println!("Command executed successfully");
-                    true
-                } else {
-                    // 输出失败信息
-                    eprintln!(
-                        "Command failed: {}",
-                        String::from_utf8_lossy(&output.stderr)
-                    );
-                    false
-                }
-            },
-            Err(e) => {
-                eprintln!("Failed to execute command: {}", e);
-                false
-            }
-        }
-    }
 
     fn support_format(support: u8) -> Vec<&'static str> {
         let mut support_types = Vec::new();

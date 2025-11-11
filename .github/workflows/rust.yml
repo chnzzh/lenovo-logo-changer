@@ -20,5 +20,17 @@ jobs:
         run: rustup target add x86_64-pc-windows-gnu --toolchain nightly
       - name: Install mingw-w64
         run: sudo apt install mingw-w64 -y
-      - name: Build
-        run: cargo +nightly build --verbose --target x86_64-pc-windows-gnu
+      - name: Build for Windows GNU
+        run: cargo build --verbose --target x86_64-pc-windows-gnu --release --locked
+      - name: Build for ubuntu
+        run: cargo build --verbose --release --locked
+      - name: Upload Windows GNU binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: lenovo-logo-changer-win-x86_64
+          path: target/x86_64-pc-windows-gnu/release/lenovo-logo-changer.exe
+      - name: Upload Ubuntu binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: lenovo-logo-changer-linux-x86_64
+          path: target/release/lenovo-logo-changer

@@ -15,7 +15,7 @@ pub(crate) fn is_admin() -> bool {
             size,
             &mut size,
         );
-        println!("is_admin: {}", is_admin);
+    log::debug!("is_admin: {}", is_admin);
         if is_admin == 0 {
             false
         }

@@ -25,12 +25,12 @@ jobs:
       - name: Build for ubuntu
         run: cargo build --verbose --release --locked
       - name: Upload Windows GNU binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: lenovo-logo-changer-win-x86_64
+          name: lenovo-logo-changer-win-x86_64-${{ matrix.runs-on }}
           path: target/x86_64-pc-windows-gnu/release/lenovo-logo-changer.exe
       - name: Upload Ubuntu binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: lenovo-logo-changer-linux-x86_64
+          name: lenovo-logo-changer-linux-x86_64-${{ matrix.runs-on }}
           path: target/release/lenovo-logo-changer

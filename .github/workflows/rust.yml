@@ -17,13 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install target
-        run: rustup target add x86_64-pc-windows-gnu --toolchain nightly
+        run: rustup target add x86_64-pc-windows-gnu
       - name: Install mingw-w64
         run: sudo apt install mingw-w64 -y
       - name: Build for Windows GNU
-        run: cargo build --verbose --target x86_64-pc-windows-gnu --release --locked
+        run: cargo build --verbose --target x86_64-pc-windows-gnu --release
       - name: Build for ubuntu
-        run: cargo build --verbose --release --locked
+        run: cargo build --verbose --release
       - name: Upload Windows GNU binary
         uses: actions/upload-artifact@v4
         with:

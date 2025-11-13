@@ -6,7 +6,7 @@
 ![Static Badge](https://img.shields.io/badge/!!!SeeReadmeFirst!!!-orangered)
 
 *Lenovo UEFI Boot Logo Changer* is a rust program designed to modify the Boot startup logo on Lenovo devices with UEFI firmware.
-This tool allows u to customize the boot logo with different format image.
+This tool allows you to customize the boot logo with different format image.
 
 ![20240128171115](https://github.com/chnzzh/lenovo-logo-changer/assets/41407837/674d7db6-e2af-4360-956d-edacf9fe5157)
 
@@ -64,6 +64,15 @@ All of the above operations need to be performed with administrator privileges.
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    sudo apt install mingw-w64 -y
    ```
+   
+#### For Linux
+
+2. Build the project:
+   ```bash
+   cargo build --release
+   ```  
+
+#### For Windows
 
 2. Add the Windows target for Rust:
    ```bash
@@ -72,13 +81,10 @@ All of the above operations need to be performed with administrator privileges.
 
 3. Build the project:
    ```bash
-   # Windows target
    cargo build --release --target x86_64-pc-windows-gnu
-   # Linux target
-   cargo build --release
    ```
 
-## Support Types
+## Supported Types
 
 + ThinkBook 14 G4+ ARA
 + ThinkBook 16 G5+ ARP

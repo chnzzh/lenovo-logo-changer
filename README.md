@@ -64,6 +64,13 @@ All of the above operations need to be performed with administrator privileges.
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    sudo apt install mingw-w64 -y
    ```
+   
+#### For Linux
+
+2. Build the project:
+   ```bash
+   cargo build --release
+   ```  
 
 #### For Windows
 
@@ -77,14 +84,7 @@ All of the above operations need to be performed with administrator privileges.
    cargo build --release --target x86_64-pc-windows-gnu
    ```
 
-#### For Linux
-
-2. Build the project:
-   ```bash
-   cargo build --release
-   ```  
-
-## Support Types
+## Supported Types
 
 + ThinkBook 14 G4+ ARA
 + ThinkBook 16 G5+ ARP

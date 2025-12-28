@@ -46,6 +46,8 @@ struct LogoOperationResult {
     enable: u8,
     lbldesp_var: [u8; 10],
     lbldvc_var: [u8; 40],
+    lbldesp_var_name: String,
+    lbldvc_var_name: String,
 }
 
 // 在后台线程执行设置Logo操作
@@ -54,6 +56,8 @@ fn perform_set_logo_operation(
     show_loading_icon: bool,
     lbldesp_var: [u8; 10],
     lbldvc_var: [u8; 40],
+    lbldesp_var_name: String,
+    lbldvc_var_name: String,
 ) -> LogoOperationResult {
     // 先设置加载图标
     let loading_icon_result = NativePlatform::set_loading_icon(show_loading_icon);
@@ -65,6 +69,8 @@ fn perform_set_logo_operation(
     let mut temp_info = PlatformInfo::default();
     temp_info.lbldesp_var = lbldesp_var;
     temp_info.lbldvc_var = lbldvc_var;
+    temp_info.lbldesp_var_name = lbldesp_var_name;
+    temp_info.lbldvc_var_name = lbldvc_var_name;
     temp_info.width = u32::from_le_bytes(lbldesp_var[1..5].try_into().unwrap());
     temp_info.height = u32::from_le_bytes(lbldesp_var[5..9].try_into().unwrap());
     
@@ -82,6 +88,8 @@ fn perform_set_logo_operation(
         enable: updated_info.enable,
         lbldesp_var: updated_info.lbldesp_var,
         lbldvc_var: updated_info.lbldvc_var,
+        lbldesp_var_name: updated_info.lbldesp_var_name,
+        lbldvc_var_name: updated_info.lbldvc_var_name,
     }
 }
 
@@ -89,6 +97,8 @@ fn perform_set_logo_operation(
 fn perform_restore_logo_operation(
     lbldesp_var: [u8; 10],
     lbldvc_var: [u8; 40],
+    lbldesp_var_name: String,
+    lbldvc_var_name: String,
 ) -> LogoOperationResult {
     // 设置加载图标为启用
     let loading_icon_result = NativePlatform::set_loading_icon(true);
@@ -100,6 +110,8 @@ fn perform_restore_logo_operation(
     let mut temp_info = PlatformInfo::default();
     temp_info.lbldesp_var = lbldesp_var;
     temp_info.lbldvc_var = lbldvc_var;
+    temp_info.lbldesp_var_name = lbldesp_var_name;
+    temp_info.lbldvc_var_name = lbldvc_var_name;
     
     let success = temp_info.restore_logo();
     
@@ -115,6 +127,8 @@ fn perform_restore_logo_operation(
         enable: updated_info.enable,
         lbldesp_var: updated_info.lbldesp_var,
         lbldvc_var: updated_info.lbldvc_var,
+        lbldesp_var_name: updated_info.lbldesp_var_name,
+        lbldvc_var_name: updated_info.lbldvc_var_name,
     }
 }
 
@@ -216,7 +230,7 @@ impl MyApp {
                 }
 
                 if let Some(picked_path) = &self.picked_path  {
-                    if self.platform_info.version == 0x20003 {
+                    if self.platform_info.version == 0x20003 || self.platform_info.lbldvc_var_name.is_empty() {
                         ui.horizontal(|ui| {
                             ui.label(t(lang, "picked_image").as_ref());
                             ui.monospace(picked_path);
@@ -236,10 +250,19 @@ impl MyApp {
                             let show_loading_icon = self.set_loading_icon;
                             let lbldesp_var = self.platform_info.lbldesp_var;
                             let lbldvc_var = self.platform_info.lbldvc_var;
+                            let lbldesp_var_name = self.platform_info.lbldesp_var_name.clone();
+                            let lbldvc_var_name = self.platform_info.lbldvc_var_name.clone();
                             
                             // 在后台线程执行操作
                             self.set_logo_promise = Some(Promise::spawn_thread("set_logo", move || {
-                                perform_set_logo_operation(img_path, show_loading_icon, lbldesp_var, lbldvc_var)
+                                perform_set_logo_operation(
+                                    img_path,
+                                    show_loading_icon,
+                                    lbldesp_var,
+                                    lbldvc_var,
+                                    lbldesp_var_name,
+                                    lbldvc_var_name,
+                                )
                             }));
                             self.pending_set_logo = false;
                         }
@@ -256,6 +279,8 @@ impl MyApp {
                                 self.platform_info.enable = result.enable;
                                 self.platform_info.lbldesp_var = result.lbldesp_var;
                                 self.platform_info.lbldvc_var = result.lbldvc_var;
+                                self.platform_info.lbldesp_var_name = result.lbldesp_var_name.clone();
+                                self.platform_info.lbldvc_var_name = result.lbldvc_var_name.clone();
                                 
                                 // 清除Promise
                                 self.set_logo_promise = None;
@@ -292,10 +317,17 @@ impl MyApp {
                     // 捕获需要的数据
                     let lbldesp_var = self.platform_info.lbldesp_var;
                     let lbldvc_var = self.platform_info.lbldvc_var;
+                    let lbldesp_var_name = self.platform_info.lbldesp_var_name.clone();
+                    let lbldvc_var_name = self.platform_info.lbldvc_var_name.clone();
                     
                     // 在后台线程执行操作
                     self.restore_logo_promise = Some(Promise::spawn_thread("restore_logo", move || {
-                        perform_restore_logo_operation(lbldesp_var, lbldvc_var)
+                        perform_restore_logo_operation(
+                            lbldesp_var,
+                            lbldvc_var,
+                            lbldesp_var_name,
+                            lbldvc_var_name,
+                        )
                     }));
                     self.pending_restore_logo = false;
                 }
@@ -312,6 +344,8 @@ impl MyApp {
                         self.platform_info.enable = result.enable;
                         self.platform_info.lbldesp_var = result.lbldesp_var;
                         self.platform_info.lbldvc_var = result.lbldvc_var;
+                        self.platform_info.lbldesp_var_name = result.lbldesp_var_name.clone();
+                        self.platform_info.lbldvc_var_name = result.lbldvc_var_name.clone();
                         self.is_support = result.enable != 0 || result.success;
                         
                         // 清除Promise

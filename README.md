@@ -86,6 +86,7 @@ All of the above operations need to be performed with administrator privileges.
 
 ## Supported Types
 
++ ThinkPad T14
 + ThinkBook 14 G4+ ARA
 + ThinkBook 16 G5+ ARP
 + IdeaPad Slim 5 14AHP9 (83DB)

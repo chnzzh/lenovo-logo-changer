@@ -59,10 +59,9 @@ All of the above operations need to be performed with administrator privileges.
 
 ### On Linux
 
-1. Install Rust and MinGW:
+1. Install Rust:
    ```bash
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   sudo apt install mingw-w64 -y
    ```
    
 #### For Linux
@@ -71,11 +70,11 @@ All of the above operations need to be performed with administrator privileges.
    ```bash
    cargo build --release
    ```  
-
 #### For Windows
 
 2. Add the Windows target for Rust:
    ```bash
+   sudo apt install mingw-w64 -y
    rustup target add x86_64-pc-windows-gnu
    ```
 
@@ -84,12 +83,30 @@ All of the above operations need to be performed with administrator privileges.
    cargo build --release --target x86_64-pc-windows-gnu
    ```
 
-## Supported Types
+## Currently Supported Devices
 
+### ThinkPad
++ ThinkPad E14
+
+### ThinkBook
 + ThinkBook 14 G4+ ARA
 + ThinkBook 16 G5+ ARP
++ ThinkBook 16 G7 IML
+
+### IdeaPad
 + IdeaPad Slim 5 14AHP9 (83DB)
++ Lenovo Ideapad Gaming 3 15ACH6 (82K2)
+
+### LOQ
 + Lenovo LOQ 15IRH8
-+ Lenovo Yoga Slim 7 Aura Edition 15,3"
 + Lenovo LOQ 15ARP9
-+ ...
+
+### Legion
++ Lenovo Legion Pro 5 16ADR10 (83LT)
+
+### Yoga
++ Lenovo Yoga Slim 7 Aura Edition 15,3"
+
+## Community Contributions Welcome
+If you have successfully used this tool on a Lenovo device, please report it in [#34](https://github.com/chnzzh/lenovo-logo-changer/issues/34).
+Thanks to everyone who tests and shares successful devices!

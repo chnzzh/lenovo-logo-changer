@@ -2,12 +2,16 @@ name: Release
 
 on:
   release:
-    types: [created]
+    types: [published]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   release:
     name: release ${{ matrix.target }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -15,14 +19,39 @@ jobs:
           - target: x86_64-pc-windows-gnu
             archive_type: zip
             archive_name: lenovo_logo_changer_win_x86_64
+            binary_name: lenovo-logo-changer.exe
+          - target: x86_64-unknown-linux-gnu
+            archive_type: tar.gz
+            archive_name: lenovo_logo_changer_linux_x86_64
+            binary_name: lenovo-logo-changer
     steps:
       - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.5
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install mingw-w64
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        run: sudo apt install mingw-w64 -y
+      - name: Build
+        run: cargo build --verbose --target ${{ matrix.target }} --release
+      - name: Create archive
+        run: |
+          mkdir -p release_tmp
+          cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} release_tmp/
+          cp README.md LICENSE release_tmp/
+          cd release_tmp
+          if [ "${{ matrix.archive_type }}" = "zip" ]; then
+            zip -r ../${{ matrix.archive_name }}.zip *
+          else
+            tar czf ../${{ matrix.archive_name }}.tar.gz *
+          fi
+      - name: Upload to Release
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          RUSTTARGET: ${{ matrix.target }}
-          EXTRA_FILES: "README.md LICENSE"
-          ARCHIVE_TYPES: ${{ matrix.archive_type }}
-          ARCHIVE_NAME: ${{ matrix.archive_name }}
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ matrix.archive_name }}${{ matrix.archive_type == 'zip' && '.zip' || '.tar.gz' }}
+          asset_name: ${{ matrix.archive_name }}${{ matrix.archive_type == 'zip' && '.zip' || '.tar.gz' }}
+          asset_content_type: ${{ matrix.archive_type == 'zip' && 'application/zip' || 'application/gzip' }}

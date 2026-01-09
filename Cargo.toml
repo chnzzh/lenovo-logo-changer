@@ -15,6 +15,7 @@ egui = "0.33.0"
 hex = "0.4.3"
 rfd = "0.15.4"
 sha2 = "0.10.9"
+crc32fast = "1.5.0"
 poll-promise = "0.3"
 
 # Windows特定依赖

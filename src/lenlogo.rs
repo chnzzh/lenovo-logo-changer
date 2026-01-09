@@ -1,11 +1,12 @@
+use crc32fast::Hasher;
+use efivar::efi::{Variable, VariableFlags};
+use log::{debug, error, info};
+use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io;
 use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
-use efivar::efi::{Variable, VariableFlags};
-use sha2::{Sha256, Digest};
-use log::{debug, error, info};
 
 use crate::esp_partition::{copy_file_to_esp, delete_logo_path};
 
@@ -22,7 +23,7 @@ where
     {
         LinuxPlatform::with_efi_var_writable(var_name, f)
     }
-    
+
     #[cfg(not(target_os = "linux"))]
     {
         // Windows和其他平台直接执行
@@ -72,7 +73,7 @@ impl PlatformInfo {
                 self.height = u32::from_le_bytes(esp_buffer[5..9].try_into().unwrap());
                 self.support = Self::support_format(esp_buffer[9]);
                 self.lbldesp_var = <[u8; 10]>::try_from(esp_buffer).unwrap();
-            },
+            }
             Err(err) => {
                 error!("read lbldesp_var failed: {}", err);
                 return false;
@@ -88,7 +89,7 @@ impl PlatformInfo {
                 }
                 self.version = u32::from_le_bytes(dvc_buffer[0..4].try_into().unwrap());
                 self.lbldvc_var = <[u8; 40]>::try_from(dvc_buffer).unwrap();
-            },
+            }
             Err(err) => {
                 error!("read lbldvc_var failed: {}", err);
                 return false;
@@ -98,14 +99,16 @@ impl PlatformInfo {
     }
 
     pub(crate) fn set_logo(&mut self, img_path: &String) -> bool {
-
         // 复制文件到ESP分区
         let file_path = Path::new(img_path);
         let file_extension = file_path.extension().unwrap().to_str().unwrap();
-    debug!("file_extension: {}", file_extension);
+        debug!("file_extension: {}", file_extension);
 
-        let dst_path = format!(r"/EFI/Lenovo/Logo/mylogo_{}x{}.{}", self.width, self.height, file_extension);
-    info!("target path: {}", dst_path);
+        let dst_path = format!(
+            r"/EFI/Lenovo/Logo/mylogo_{}x{}.{}",
+            self.width, self.height, file_extension
+        );
+        info!("target path: {}", dst_path);
 
         if copy_file_to_esp(img_path, &dst_path) == false {
             error!("copy file failed");
@@ -113,74 +116,97 @@ impl PlatformInfo {
         }
 
         let mut varman = efivar::system();
-        
+
         // 修改logoinfo
         let mut esp_buffer = self.lbldesp_var.clone();
         esp_buffer[0] = 1;
         let esp_var = Variable::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
-        
+
         // 在Linux下需要先移除immutable属性
-        let write_result = with_efi_var_writable("LBLDESP-871455d0-5576-4fb8-9865-af0824463b9e", || {
-            match varman.write(&esp_var, VariableFlags::from_bits(0x7).unwrap(), &esp_buffer) {
+        let write_result = with_efi_var_writable(
+            "LBLDESP-871455d0-5576-4fb8-9865-af0824463b9e",
+            || match varman.write(
+                &esp_var,
+                VariableFlags::from_bits(0x7).unwrap(),
+                &esp_buffer,
+            ) {
                 Ok(rt) => {
                     debug!("write lbldesp_var: {:?}", rt);
                     Ok(())
-                },
-                Err(err) => {
-                    Err(format!("write lbldesp_var failed: {}", err))
                 }
-            }
-        });
-        
+                Err(err) => Err(format!("write lbldesp_var failed: {}", err)),
+            },
+        );
+
         match write_result {
             Ok(_) => {
                 self.enable = 1;
                 self.lbldesp_var = esp_buffer;
-            },
+            }
             Err(err) => {
                 error!("{}", err);
                 return false;
             }
         }
 
-        // 修改logocheck
-        let sha256_bytes;
-        match calculate_sha256(img_path) {
-            Ok(sha256) => {
-                // 填充到new_logo_check中
-                //let sha256_bytes = sha256.as_bytes();
-                // 将sha256十六进制字符串转化为十六进制序列
-                sha256_bytes = hex::decode(sha256).unwrap();
-            }
-            Err(e) => {
-                error!("read error {}: {}", img_path, e);
-                return false;
-            },
-        }
+        // 修改logocheck - 根据version选择SHA256或CRC32
         let mut dvc_buffer = self.lbldvc_var.clone();
-        dvc_buffer[4..36].clone_from_slice(&sha256_bytes);
-    debug!("sha256_bytes: {:?}", sha256_bytes);
-    debug!("dvc_buffer: {:?}", dvc_buffer);
+
+        if self.version == 0x20003 {
+            // version 0x20003: 使用SHA256 (32字节)
+            let sha256_bytes;
+            match calculate_sha256(img_path) {
+                Ok(sha256) => {
+                    // 将sha256十六进制字符串转化为十六进制序列
+                    sha256_bytes = hex::decode(sha256).unwrap();
+                }
+                Err(e) => {
+                    error!("read error {}: {}", img_path, e);
+                    return false;
+                }
+            }
+            dvc_buffer[4..36].clone_from_slice(&sha256_bytes);
+            debug!("sha256_bytes: {:?}", sha256_bytes);
+        } else if self.version == 0x20000 {
+            // version 0x20000: 使用CRC32 (4字节)
+            match calculate_crc32_first_512(img_path) {
+                Ok(crc32) => {
+                    dvc_buffer[4..8].clone_from_slice(&crc32.to_le_bytes());
+                    debug!("crc32: 0x{:08x}", crc32);
+                }
+                Err(e) => {
+                    error!("read error {}: {}", img_path, e);
+                    return false;
+                }
+            }
+        } else {
+            error!("unsupported version: 0x{:x}", self.version);
+            return false;
+        }
+        debug!("dvc_buffer: {:?}", dvc_buffer);
 
         let dvc_var = Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
-        
+
         // 在Linux下需要先移除immutable属性
-        let write_result = with_efi_var_writable("LBLDVC-871455d1-5576-4fb8-9865-af0824463c9f", || {
-            match varman.write(&dvc_var, VariableFlags::from_bits(0x7).unwrap(), &dvc_buffer) {
+        let write_result = with_efi_var_writable(
+            "LBLDVC-871455d1-5576-4fb8-9865-af0824463c9f",
+            || match varman.write(
+                &dvc_var,
+                VariableFlags::from_bits(0x7).unwrap(),
+                &dvc_buffer,
+            ) {
                 Ok(rt) => {
                     debug!("write lbldvc_var: {:?}", rt);
                     Ok(())
-                },
-                Err(err) => {
-                    Err(format!("write lbldvc_var failed: {}", err))
                 }
-            }
-        });
-        
+                Err(err) => Err(format!("write lbldvc_var failed: {}", err)),
+            },
+        );
+
         match write_result {
             Ok(_) => {
                 self.lbldvc_var = dvc_buffer;
-            },
+            }
             Err(err) => {
                 error!("{}", err);
                 return false;
@@ -202,25 +228,29 @@ impl PlatformInfo {
         let mut esp_buffer = self.lbldesp_var.clone();
         if esp_buffer[0] != 0 {
             esp_buffer[0] = 0;
-            let esp_var = Variable::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
-            
+            let esp_var =
+                Variable::from_str("LBLDESP-871455D0-5576-4FB8-9865-AF0824463B9E").unwrap();
+
             // 在Linux下需要先移除immutable属性
-            let write_result = with_efi_var_writable("LBLDESP-871455d0-5576-4fb8-9865-af0824463b9e", || {
-                match varman.write(&esp_var, VariableFlags::from_bits(0x7).unwrap(), &esp_buffer) {
-                    Ok(rt) => {
-                        debug!("write lbldesp_var: {:?}", rt);
-                        Ok(())
-                    },
-                    Err(err) => {
-                        Err(format!("write lbldesp_var failed: {}", err))
+            let write_result =
+                with_efi_var_writable("LBLDESP-871455d0-5576-4fb8-9865-af0824463b9e", || {
+                    match varman.write(
+                        &esp_var,
+                        VariableFlags::from_bits(0x7).unwrap(),
+                        &esp_buffer,
+                    ) {
+                        Ok(rt) => {
+                            debug!("write lbldesp_var: {:?}", rt);
+                            Ok(())
+                        }
+                        Err(err) => Err(format!("write lbldesp_var failed: {}", err)),
                     }
-                }
-            });
-            
+                });
+
             match write_result {
                 Ok(_) => {
                     self.lbldesp_var = esp_buffer;
-                },
+                }
                 Err(err) => {
                     error!("{}", err);
                     status = false;
@@ -228,23 +258,47 @@ impl PlatformInfo {
             }
         }
 
-        // 修改logocheck
+        // 修改logocheck - 根据version选择清零范围
         let mut dvc_buffer = self.lbldvc_var.clone();
-        if dvc_buffer[4..40] != [0u8; 36] {
-            dvc_buffer[4..40].clone_from_slice(&[0u8; 36]);
-            let dvc_var = Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
-            
-            let write_result = with_efi_var_writable("LBLDVC-871455d1-5576-4fb8-9865-af0824463c9f", || {
-                match varman.write(&dvc_var, VariableFlags::from_bits(0x7).unwrap(), &dvc_buffer) {
-                    Ok(rt) => { debug!("write lbldvc_var: {:?}", rt); Ok(()) },
-                    Err(err) => Err(format!("write lbldvc_var failed: {}", err))
-                }
-            });
-            
+        let need_clear = if self.version == 0x20000 {
+            // version 0x20000
+            dvc_buffer[4..8] != [0u8; 4]
+        } else {
+            // version 0x20003...
+            dvc_buffer[4..40] != [0u8; 36]
+        };
+
+        if need_clear {
+            if self.version == 0x20000 {
+                // version 0x20000: 只清零CRC32的4字节（offset 4-8）
+                dvc_buffer[4..8].clone_from_slice(&[0u8; 4]);
+            } else {
+                // version 0x20003及其他: 清零整个校验区域（offset 4-40）
+                dvc_buffer[4..40].clone_from_slice(&[0u8; 36]);
+            }
+
+            let dvc_var =
+                Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
+
+            let write_result = with_efi_var_writable(
+                "LBLDVC-871455d1-5576-4fb8-9865-af0824463c9f",
+                || match varman.write(
+                    &dvc_var,
+                    VariableFlags::from_bits(0x7).unwrap(),
+                    &dvc_buffer,
+                ) {
+                    Ok(rt) => {
+                        debug!("write lbldvc_var: {:?}", rt);
+                        Ok(())
+                    }
+                    Err(err) => Err(format!("write lbldvc_var failed: {}", err)),
+                },
+            );
+
             match write_result {
                 Ok(_) => {
                     self.lbldvc_var = dvc_buffer;
-                },
+                }
                 Err(err) => {
                     error!("{}", err);
                     status = false;
@@ -253,7 +307,6 @@ impl PlatformInfo {
         }
         status
     }
-
 
     fn support_format(support: u8) -> Vec<&'static str> {
         let mut support_types = Vec::new();
@@ -294,4 +347,14 @@ fn calculate_sha256(file_path: &str) -> io::Result<String> {
         sha256.update(&buffer[..bytes_read]);
     }
     Ok(format!("{:x}", sha256.finalize()))
+}
+
+fn calculate_crc32_first_512(file_path: &str) -> io::Result<u32> {
+    let mut file = File::open(file_path)?;
+    let mut buffer = [0u8; 512];
+    let bytes_read = file.read(&mut buffer)?;
+
+    let mut hasher = Hasher::new();
+    hasher.update(&buffer[..bytes_read]);
+    Ok(hasher.finalize())
 }

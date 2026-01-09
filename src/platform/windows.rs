@@ -3,12 +3,10 @@
 use std::path::Path;
 use std::process::Command;
 use windows_sys::{
-    Win32::System::Threading::*,
-    Win32::Security::*,
-    Win32::Storage::FileSystem::GetLogicalDrives,
+    Win32::Security::*, Win32::Storage::FileSystem::GetLogicalDrives, Win32::System::Threading::*,
 };
 
-use super::{PlatformOps, EspPartitionOps};
+use super::{EspPartitionOps, PlatformOps};
 
 /// Windows平台实现
 pub struct WindowsPlatform;
@@ -55,7 +53,7 @@ impl PlatformOps for WindowsPlatform {
         // mountvol X: /s
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        
+
         let mut mountvol_cmd = Command::new("mountvol");
         mountvol_cmd
             .arg(format!("{}:", mount_point))
@@ -63,7 +61,7 @@ impl PlatformOps for WindowsPlatform {
             .creation_flags(CREATE_NO_WINDOW)
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null());
-        
+
         match mountvol_cmd.status() {
             Ok(status) => {
                 if status.success() {
@@ -74,7 +72,10 @@ impl PlatformOps for WindowsPlatform {
                 }
             }
             Err(e) => {
-                eprintln!("[!] Mountvol command execution failed / 挂载命令执行失败: {}", e);
+                eprintln!(
+                    "[!] Mountvol command execution failed / 挂载命令执行失败: {}",
+                    e
+                );
                 false
             }
         }
@@ -85,7 +86,7 @@ impl PlatformOps for WindowsPlatform {
         // mountvol X: /d
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        
+
         let mut mountvol_cmd = Command::new("mountvol");
         mountvol_cmd
             .arg(format!("{}:", mount_point))
@@ -93,7 +94,7 @@ impl PlatformOps for WindowsPlatform {
             .creation_flags(CREATE_NO_WINDOW)
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null());
-        
+
         match mountvol_cmd.status() {
             Ok(status) => {
                 if status.success() {
@@ -104,7 +105,10 @@ impl PlatformOps for WindowsPlatform {
                 }
             }
             Err(e) => {
-                eprintln!("[!] Unmountvol command execution failed / 卸载命令执行失败: {}", e);
+                eprintln!(
+                    "[!] Unmountvol command execution failed / 卸载命令执行失败: {}",
+                    e
+                );
                 false
             }
         }
@@ -114,12 +118,10 @@ impl PlatformOps for WindowsPlatform {
         // 执行 bcdedit /enum all 命令
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        
+
         let mut cmd = Command::new("bcdedit");
-        cmd.arg("/enum")
-            .arg("all")
-            .creation_flags(CREATE_NO_WINDOW);
-        
+        cmd.arg("/enum").arg("all").creation_flags(CREATE_NO_WINDOW);
+
         match cmd.output() {
             Ok(output) => {
                 // 将输出转换为字符串
@@ -144,7 +146,7 @@ impl PlatformOps for WindowsPlatform {
     fn set_loading_icon(show_loading_icon: bool) -> bool {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        
+
         let args = if show_loading_icon {
             vec!["-set", "bootuxdisabled", "off"]
         } else {
@@ -152,9 +154,8 @@ impl PlatformOps for WindowsPlatform {
         };
 
         let mut cmd = Command::new("bcdedit.exe");
-        cmd.args(&args)
-            .creation_flags(CREATE_NO_WINDOW);
-        
+        cmd.args(&args).creation_flags(CREATE_NO_WINDOW);
+
         match cmd.output() {
             Ok(output) => {
                 if output.status.success() {
@@ -207,7 +208,7 @@ impl EspPartitionOps for WindowsPlatform {
         }
 
         let target_path = Path::new(&format!("{}:\\", drive_letter)).join(dst);
-        
+
         // 如果目标上级路径存在，删除目标路径
         if let Some(parent) = target_path.parent() {
             if parent.exists() {
@@ -218,7 +219,7 @@ impl EspPartitionOps for WindowsPlatform {
                 }
             }
         }
-        
+
         // 创建目标路径
         if let Some(parent) = target_path.parent() {
             if !parent.exists() {
@@ -236,8 +237,11 @@ impl EspPartitionOps for WindowsPlatform {
             Self::unmount_esp(&mount_point);
             return false;
         }
-        
-        println!("[+] File copied successfully / 文件复制成功: {}", target_path.display());
+
+        println!(
+            "[+] File copied successfully / 文件复制成功: {}",
+            target_path.display()
+        );
         Self::unmount_esp(&mount_point);
         true
     }
@@ -258,7 +262,7 @@ impl EspPartitionOps for WindowsPlatform {
         }
 
         let target_path = Path::new(&format!("{}:\\", drive_letter)).join(r"EFI/Lenovo/Logo");
-        
+
         // 如果目标路径存在，删除目标路径
         if target_path.exists() {
             if let Err(err) = std::fs::remove_dir_all(&target_path) {
@@ -270,7 +274,7 @@ impl EspPartitionOps for WindowsPlatform {
         } else {
             println!("[*] Logo directory does not exist / Logo目录不存在");
         }
-        
+
         Self::unmount_esp(&mount_point);
         true
     }

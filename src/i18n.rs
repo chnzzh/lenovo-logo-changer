@@ -44,7 +44,9 @@ pub fn t(lang: Lang, key: &str) -> Cow<'static, str> {
             "setting_logo_wait" => Cow::Borrowed("Setting logo, please wait..."),
             "restoring_logo_wait" => Cow::Borrowed("Restoring logo, please wait..."),
             // Results
-            "change_logo_success" => Cow::Borrowed("Change logo succeeded, reboot to see the effect"),
+            "change_logo_success" => {
+                Cow::Borrowed("Change logo succeeded, reboot to see the effect")
+            }
             "change_logo_failed" => Cow::Borrowed("Change logo failed"),
             "restore_logo_success" => Cow::Borrowed("Restore Logo Success"),
             "restore_logo_failed" => Cow::Borrowed("Restore Logo Failed"),

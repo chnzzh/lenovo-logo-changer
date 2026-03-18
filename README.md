@@ -85,27 +85,45 @@ All of the above operations need to be performed with administrator privileges.
 
 ## Currently Supported Devices
 
-### ThinkPad
-+ ThinkPad E14
+### 🔴 ThinkPad
 
-### ThinkBook
-+ ThinkBook 14 G4+ ARA
-+ ThinkBook 16 G5+ ARP
-+ ThinkBook 16 G7 IML
+    ThinkPad E14
+    Thinkpad T14P Gen 1
+    ThinkPad X13 Gen 4
 
-### IdeaPad
-+ IdeaPad Slim 5 14AHP9 (83DB)
-+ Lenovo Ideapad Gaming 3 15ACH6 (82K2)
+### 📕 ThinkBook
 
-### LOQ
-+ Lenovo LOQ 15IRH8
-+ Lenovo LOQ 15ARP9
+    ThinkBook 14 G4+ ARA
+    ThinkBook 16 G5+ ARP
+    ThinkBook 16 G7 IML
+    ThinkBook 14p G3 ARH
+    ThinkBook 14 G7+ IAH
 
-### Legion
-+ Lenovo Legion Pro 5 16ADR10 (83LT)
+### 💻 IdeaPad
 
-### Yoga
-+ Lenovo Yoga Slim 7 Aura Edition 15,3"
+    Lenovo IdeaPad Slim 5 14AHP9 (83DB)
+    Lenovo Ideapad Gaming 3 15ACH6 (82K2)
+    Lenovo Ideapad Slim 3i
+    Lenovo IdeaPad Slim 5 16AHP9
+    Lenovo IdeaPad Slim 3 15ARP10
+
+### 🎮 LOQ
+
+    Lenovo LOQ 15IRH8
+    Lenovo LOQ 15ARP9
+    Lenovo LOQ 15IAX9
+    Lenovo LOQ 15IRX10
+
+### ⚡ Legion
+
+    Lenovo Legion Pro 5 16ADR10 (83LT)
+    Lenovo Legion Go
+
+### 🪽 Yoga
+
+    Lenovo Yoga Slim 6 14IAP8
+    Lenovo Yoga Slim 7 Aura Edition 15,3"
+    Lenovo Yoga Pro 7i Aura Edition
 
 ## Community Contributions Welcome
 If you have successfully used this tool on a Lenovo device, please report it in [#34](https://github.com/chnzzh/lenovo-logo-changer/issues/34).

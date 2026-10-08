@@ -239,6 +239,7 @@ Note: static images also confirmed working, exact image format not specified.
 |         | jpg | tga | pcx | gif | bmp | png |
 |---------|-----|-----|-----|-----|-----|-----|
 | Arch Linux | untested | untested | untested | partial (single-frame gifs work; multi-frame gifs boot loop after latest BIOS update) | untested | untested |
+| Windows 11 Home (build 26300, BIOS NECN47WW) | untested | untested | untested | yes (animated) | untested | untested |
 
 Note: static images work flawlessly, exact image format not specified.
 

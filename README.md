@@ -192,6 +192,11 @@ Thanks to everyone who tests and shares successful devices !
 |---------|-----|-----|-----|-----|-----|-----|
 | Windows 11 Home 25H2 | yes | untested | untested | untested | yes | untested |
 
+**IdeaPad Slim 3 15AMN8**
+|         | jpg | tga | pcx | gif | bmp | png |
+|---------|-----|-----|-----|-----|-----|-----|
+| Void Linux x86_64 7.3.0 | yes | untested | untested | untested | untested | untested |
+
 **IdeaPad Slim 3 15ARP10**
 |         | jpg | tga | pcx | gif | bmp | png |
 |---------|-----|-----|-----|-----|-----|-----|

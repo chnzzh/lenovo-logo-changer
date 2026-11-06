@@ -1,14 +1,10 @@
-use crc32fast::Hasher;
 use efivar::efi::{Variable, VariableFlags};
 use log::{debug, error, info};
-use sha2::{Digest, Sha256};
-use std::fs::File;
-use std::io;
-use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 
 use crate::esp_partition::{copy_file_to_esp, delete_logo_path};
+use crate::logo_image::PreparedLogo;
 
 #[cfg(target_os = "linux")]
 use crate::platform::linux::LinuxPlatform;
@@ -99,10 +95,26 @@ impl PlatformInfo {
     }
 
     pub(crate) fn set_logo(&mut self, img_path: &String) -> bool {
-        // 复制文件到ESP分区
-        let file_path = Path::new(img_path);
-        let file_extension = file_path.extension().unwrap().to_str().unwrap();
-        debug!("file_extension: {}", file_extension);
+        // Normalize PNGs and snapshot the bytes before changing ESP or UEFI state.
+        let prepared = match PreparedLogo::new(Path::new(img_path), self.version) {
+            Ok(image) => image,
+            Err(err) => {
+                error!("prepare logo failed: {}", err);
+                return false;
+            }
+        };
+        let prepared_path = match prepared.path() {
+            Ok(path) => path,
+            Err(err) => {
+                error!("prepare logo failed: {}", err);
+                return false;
+            }
+        };
+        let file_extension = prepared.extension();
+        let dvc_buffer = prepared.descriptor(self.lbldvc_var);
+        if file_extension == "png" {
+            info!("Prepared black-backed 8-bit RGB PNG without source metadata");
+        }
 
         let dst_path = format!(
             r"/EFI/Lenovo/Logo/mylogo_{}x{}.{}",
@@ -110,7 +122,7 @@ impl PlatformInfo {
         );
         info!("target path: {}", dst_path);
 
-        if copy_file_to_esp(img_path, &dst_path) == false {
+        if copy_file_to_esp(prepared_path, &dst_path) == false {
             error!("copy file failed");
             return false;
         }
@@ -149,40 +161,7 @@ impl PlatformInfo {
             }
         }
 
-        // 修改logocheck - 根据version选择SHA256或CRC32
-        let mut dvc_buffer = self.lbldvc_var.clone();
-
-        if self.version == 0x20003 {
-            // version 0x20003: 使用SHA256 (32字节)
-            let sha256_bytes;
-            match calculate_sha256(img_path) {
-                Ok(sha256) => {
-                    // 将sha256十六进制字符串转化为十六进制序列
-                    sha256_bytes = hex::decode(sha256).unwrap();
-                }
-                Err(e) => {
-                    error!("read error {}: {}", img_path, e);
-                    return false;
-                }
-            }
-            dvc_buffer[4..36].clone_from_slice(&sha256_bytes);
-            debug!("sha256_bytes: {:?}", sha256_bytes);
-        } else if self.version == 0x20000 {
-            // version 0x20000: 使用CRC32 (4字节)
-            match calculate_crc32_first_512(img_path) {
-                Ok(crc32) => {
-                    dvc_buffer[4..8].clone_from_slice(&crc32.to_le_bytes());
-                    debug!("crc32: 0x{:08x}", crc32);
-                }
-                Err(e) => {
-                    error!("read error {}: {}", img_path, e);
-                    return false;
-                }
-            }
-        } else {
-            error!("unsupported version: 0x{:x}", self.version);
-            return false;
-        }
+        // The checksum was computed from the exact snapshot copied to the ESP.
         debug!("dvc_buffer: {:?}", dvc_buffer);
 
         let dvc_var = Variable::from_str("LBLDVC-871455D1-5576-4FB8-9865-AF0824463C9F").unwrap();
@@ -330,31 +309,4 @@ impl PlatformInfo {
         }
         support_types
     }
-}
-
-fn calculate_sha256(file_path: &str) -> io::Result<String> {
-    let mut file = File::open(file_path)?;
-    let mut sha256 = Sha256::new();
-    let mut buffer = [0; 1024];
-
-    loop {
-        let bytes_read = file.read(&mut buffer)?;
-
-        if bytes_read == 0 {
-            break;
-        }
-
-        sha256.update(&buffer[..bytes_read]);
-    }
-    Ok(format!("{:x}", sha256.finalize()))
-}
-
-fn calculate_crc32_first_512(file_path: &str) -> io::Result<u32> {
-    let mut file = File::open(file_path)?;
-    let mut buffer = [0u8; 512];
-    let bytes_read = file.read(&mut buffer)?;
-
-    let mut hasher = Hasher::new();
-    hasher.update(&buffer[..bytes_read]);
-    Ok(hasher.finalize())
 }

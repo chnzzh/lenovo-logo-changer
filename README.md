@@ -18,7 +18,7 @@ You can also refer to [How to build](#how-to-build) to compile it yourself.
 ## Disclaimer
 
 + **This program involves modifications to UEFI variables and the ESP partition. Please ensure to backup important files before usage.**
-+ **This program will not check if the image files you are using comply with the correct image format. Please ensure that your images can function properly.** (Otherwise your system may be compromised: [LogoFAIL](https://binarly.io/posts/finding_logofail_the_dangers_of_image_parsing_during_system_boot/))
++ **PNG files are decoded and normalized to black-backed 8-bit RGB PNG before installation. Other formats are copied without conversion. This does not guarantee that your firmware can decode an image; use a format and size supported by your device.** (Otherwise your system may be compromised: [LogoFAIL](https://binarly.io/posts/finding_logofail_the_dangers_of_image_parsing_during_system_boot/))
 + This program is intended for personal research use only.
 + The detailed list provided at the end is user contributed and **ONLY** for informational purposes. It shall provide a cleaner view of user tested devices than [#34](https://github.com/chnzzh/lenovo-logo-changer/issues/34). No responsibility can be put on the authors for any problem encountered after taking information from the list.
 + **All risks are assumed by the user**.
@@ -42,6 +42,14 @@ You can also refer to [How to build](#how-to-build) to compile it yourself.
 + Click "Open Image" to upload a suitable image.
 + Click "Change Logo"
 
+### Troubleshooting
+
+PNG files are automatically converted to black-backed 8-bit RGB PNG without source
+metadata when you click **Change Logo**. The original image is preserved.
+
+If the tool reports success but your custom logo is missing, see
+[image compatibility and Linux boot splash troubleshooting](https://github.com/chnzzh/lenovo-logo-changer/blob/master/docs/troubleshooting.md).
+
 ## How it Works
 
 Lenovo UEFI Boot Logo Changer operates by leveraging Lenovo's support for user customization of the boot logo through the ESP (EFI System Partition).
@@ -50,8 +58,9 @@ The process involves placing a custom image into the ESP partition and then conf
 So this tool do:
 
 1. **Read UEFI Variables** to determine whether the system supports Logo Change;
-2. **Place Selected Image in ESP Partition**;
-3. **Modify UEFI Variables** to enable the UEFI program to correctly set and display the customized logo.
+2. **Prepare Image** (normalize PNGs; preserve other formats) and calculate its checksum;
+3. **Place Prepared Image in ESP Partition**;
+4. **Modify UEFI Variables** to enable the UEFI program to correctly set and display the customized logo.
 
 All of the above operations need to be performed with administrator privileges.
 
@@ -99,6 +108,7 @@ Thanks to everyone who tests and shares successful devices !
 
 + ThinkBook 14p G3 ARH
 + ThinkBook 14 G4+ ARA
++ ThinkBook 14 G4+ IAP (21CX)
 + ThinkBook 14 G7+ IAH
 + ThinkBook 14 G7+ AHP
 + ThinkBook 16 G5+ ARP
@@ -175,6 +185,14 @@ Thanks to everyone who tests and shares successful devices !
 |         | jpg | tga | pcx | gif | bmp | png |
 |---------|-----|-----|-----|-----|-----|-----|
 | Windows 11 Pro for Workstations 25H2 (build 26200.8117) | yes | untested | untested | untested | yes | yes |
+
+**ThinkBook 14 G4+ IAP (21CX)**
+|         | jpg | tga | pcx | gif | bmp | png |
+|---------|-----|-----|-----|-----|-----|-----|
+| Ubuntu 26.04.1 LTS (BIOS HYCN51WW) | untested | untested | untested | untested | untested | yes (8-bit RGB, black background, no extra metadata) |
+
+See the [tested PNG recovery case](https://github.com/chnzzh/lenovo-logo-changer/blob/master/docs/troubleshooting.md#tested-recovery-thinkbook-14-g4-iap)
+for the original image encoding, recovery steps, and limits of this result.
 
 **ThinkBook 16 G5+ ARP**
 **ThinkBook 16 G7 IML**

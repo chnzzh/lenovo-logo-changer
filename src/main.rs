@@ -6,6 +6,7 @@
 mod esp_partition;
 mod i18n;
 mod lenlogo;
+mod logo_image;
 mod platform;
 
 use eframe::egui;
@@ -422,9 +423,7 @@ impl MyApp {
                                     "❓ Issue",
                                     "https://github.com/chnzzh/lenovo-logo-changer/issues",
                                 )
-                                .on_hover_text(
-                                    "Having problems? Open an issue on GitHub!",
-                                );
+                                .on_hover_text("Having problems? Open an issue on GitHub!");
                                 ui.label("Version 0.2.0 | MIT License | © 2026 chnzzh");
                             });
                         });

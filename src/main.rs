@@ -424,7 +424,7 @@ impl MyApp {
                                     "https://github.com/chnzzh/lenovo-logo-changer/issues",
                                 )
                                 .on_hover_text("Having problems? Open an issue on GitHub!");
-                                ui.label("Version 0.2.0 | MIT License | © 2026 chnzzh");
+                                ui.label(concat!("Version ", env!("CARGO_PKG_VERSION"), " | MIT License | © 2026 chnzzh"));
                             });
                         });
                     ui.add_space(4.0);

@@ -32,6 +32,8 @@ jobs:
         run: sudo apt install mingw-w64 -y
       - name: Build for Windows GNU
         run: cargo build --verbose --target x86_64-pc-windows-gnu --release
+      - name: Run tests
+        run: cargo test --verbose
       - name: Build for ubuntu
         run: cargo build --verbose --release
       - name: Upload Windows GNU binary
